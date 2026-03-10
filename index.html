@@ -394,10 +394,19 @@ var CHAT_ID   = localStorage.getItem('up1_chatid') || '';
 var IS_OWNER  = !!(BOT_TOKEN && CHAT_ID);
 var GUEST_MODE = !IS_OWNER;
 
-// URL'den misafir erişim kodu oku: ?v=BASE64
+// URL'den misafir erişim kodu oku: ?v=BASE64 veya ?guest=1
 var URL_GUEST = false;
 (function(){
   var params = new URLSearchParams(window.location.search);
+
+  // Yeni Railway tabanlı misafir modu: ?guest=1
+  if(params.get('guest') === '1'){
+    IS_OWNER  = false;
+    GUEST_MODE = true;
+    URL_GUEST = true;
+    window._RAILWAY_GUEST = true; // Railway'den okur, kaydetmez
+  }
+
   var vCode = params.get('v');
   if(vCode){
     try {
@@ -919,11 +928,8 @@ function notify(title, body, icon){
 function dismissNotif(){ /* placeholder */ }
 
 function shareGuestLink(){
-  if(!BOT_TOKEN || !CHAT_ID){ alert('Giriş bilgileri bulunamadı!'); return; }
-  // Sadece bot token + chat ID — sinyaller URL'e yazılmıyor
-  // Misafir açınca Telegram'dan direkt çeker (414 hatası önlenir)
-  var code = btoa(BOT_TOKEN + '|' + CHAT_ID);
-  var url = window.location.origin + window.location.pathname + '?v=' + code;
+  // Railway tabanlı misafir linki — sadece okuma, değişiklik yapamaz
+  var url = window.location.origin + window.location.pathname + '?guest=1';
   if(navigator.share){
     navigator.share({title:'⚡ UltraPro — Canlı Sinyal Takibi', url:url}).catch(function(){});
   } else if(navigator.clipboard){
@@ -1098,17 +1104,25 @@ function startAll(){
     if(signals.filter(function(s){return s.status==='open';}).length) startPriceLoop();
   }
 
-  // Admin: Railway'den yükle
-  if(!GUEST_MODE && !window._URL_SIGS){
+  // Admin veya Railway misafiri: Railway'den yükle
+  if(!window._URL_SIGS && (!GUEST_MODE || window._RAILWAY_GUEST)){
     upd('connBadge','⏳ Yükleniyor...');
     loadFromRailway(function(){
-      upd('connBadge','🟢 Bağlı');
-      afterLoad();
+      upd('connBadge', window._RAILWAY_GUEST ? '👁 Salt Okunur' : '🟢 Bağlı');
+      if(window._RAILWAY_GUEST){
+        // Misafir: sadece göster, 30sn'de bir yenile
+        render();
+        updateCapitalBtn();
+        if(signals.filter(function(s){return s.status==='open';}).length) startPriceLoop();
+        setInterval(function(){ loadFromRailway(function(){ render(); }); }, 30000);
+      } else {
+        afterLoad();
+      }
     });
     return;
   }
 
-  // Misafir modunda Telegram geçmişini yükle
+  // Eski ?v= misafir modu (Telegram tabanlı)
   if(GUEST_MODE && BOT_TOKEN && CHAT_ID){
     upd('connBadge','⏳ Yükleniyor...');
     loadTgHistory(function(){
