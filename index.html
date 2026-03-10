@@ -345,6 +345,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-si
 <div id="filters">
   <div class="ftab on" onclick="setFilter('all',this)">TÜMÜ</div>
   <div class="ftab" onclick="setFilter('open',this)">AÇIK</div>
+  <div class="ftab" onclick="setFilter('closed',this)">KAPALI</div>
   <div class="ftab" onclick="setFilter('buy',this)">BUY</div>
   <div class="ftab" onclick="setFilter('sell',this)">SELL</div>
   <div class="ftab" onclick="setFilter('ultra',this)">ULTRA</div>
@@ -380,6 +381,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-si
 <div id="bottomNav" style="display:flex;">
   <button class="nav-btn on" id="nb-all" onclick="setFilter('all',this);showView('list')"><span>📊</span>TÜMÜ</button>
   <button class="nav-btn" id="nb-open" onclick="setFilter('open',this);showView('list')"><span>🔥</span>AÇIK</button>
+  <button class="nav-btn" id="nb-closed" onclick="setFilter('closed',this);showView('list')"><span>✅</span>KAPALI</button>
   <button class="nav-btn" id="nb-buy" onclick="setFilter('buy',this);showView('list')"><span>🟢</span>BUY</button>
   <button class="nav-btn" id="nb-sell" onclick="setFilter('sell',this);showView('list')"><span>🔴</span>SELL</button>
   <button class="nav-btn" id="nb-chart" onclick="showView('chart')"><span>📈</span>GRAFİK</button>
@@ -456,10 +458,11 @@ function loadFromRailway(callback){
             sig.status=(sig.pnl!==null&&sig.pnl>=0)?'win':'loss';
           }
         });
+        // Duplicate temizle: aynı tgId veya aynı sym+dir+ts
         var seen={}, deduped=[];
         s.sort(function(a,b){return b.ts-a.ts;});
         s.forEach(function(sig){
-          var key=sig.sym+'|'+sig.dir+'|'+sig.entry;
+          var key = sig.tgId ? ('tg:'+sig.tgId) : (sig.sym+'|'+sig.dir+'|'+sig.ts);
           if(!seen[key]){seen[key]=true;deduped.push(sig);}
         });
         signals = deduped;
@@ -1464,6 +1467,7 @@ function setFilter(f,el){
 }
 function filterSig(s){
   if(currentFilter==='open') return s.status==='open';
+  if(currentFilter==='closed') return s.status==='win'||s.status==='loss';
   if(currentFilter==='buy') return s.dir==='BUY';
   if(currentFilter==='sell') return s.dir==='SELL';
   if(currentFilter==='ultra') return s.type==='ULTRA';
@@ -1599,7 +1603,7 @@ function renderRow(s){
   return '<div class="sig-row'+avgCl+newCl+'" style="border-left:3px solid '+d.tc+'">'
     +'<span class="badge b-'+s.type.toLowerCase()+'">'+s.type+'</span>'
     +'<span class="badge '+(s.dir==='BUY'?'b-buy':'b-sell')+'">'+s.dir+'</span>'
-    +'<span class="coin" >'+s.coin+(s.averaged?'<span class="avg-tag"> ↓'+(s.avgCount||1)+'</span>':'')+'</span>'
+    +'<span class="coin" >'+s.coin+(s.averaged?'<span class="avg-tag"> ↓1+'+(s.avgCount||1)+'</span>':'')+'</span>'
     +'<span class="mono" style="font-size:11px;color:'+(s.averaged?'var(--a)':'var(--txb)')+'">'+d.entryShow+'</span>'
     +'<span class="mono" style="font-size:11px;color:var(--txb)">'+d.lpTx+'</span>'
     +'<span style="font-size:10px;color:var(--txd)">'+dateStr(s.ts)+'</span>'
@@ -1636,7 +1640,7 @@ function renderCard(s){
     +'<div class="sig-card-top">'
       +'<span class="badge b-'+s.type.toLowerCase()+'">'+s.type+'</span>'
       +'<span class="badge '+(s.dir==='BUY'?'b-buy':'b-sell')+'">'+s.dir+'</span>'
-      +'<span class="coin" style="margin-left:4px">'+s.coin+(s.averaged?'<span class="avg-tag"> ↓'+(s.avgCount||1)+'</span>':'')+'</span>'
+      +'<span class="coin" style="margin-left:4px">'+s.coin+(s.averaged?'<span class="avg-tag"> ↓1+'+(s.avgCount||1)+'</span>':'')+'</span>'
       +'<span class="pnl-big" style="color:'+d.pnlC+'">'+(d.icon?d.icon+' ':'')+d.pnlTx+d.pnlUsdTx+'</span>'
     +'</div>'
     +avgDetail
