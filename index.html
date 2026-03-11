@@ -308,6 +308,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-si
     <div class="live-pill"><div class="dot"></div><span id="clockTxt">--:--</span></div>
     <span id="connBadge" style="font-size:10px;color:var(--txd);">⏳</span>
     <button class="icon-btn" id="guestLinkBtn" onclick="shareGuestLink()" style="display:none;" title="Misafir Linki">🔗</button>
+    <button class="icon-btn" onclick="openCapSettings()" title="Sermaye Ayarı">⚙️</button>
     <button class="icon-btn" id="backBtn" onclick="goBack()">☰</button>
   </div>
 </div>
@@ -316,6 +317,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-si
   <div class="stat"><div class="stat-l">TOPLAM</div><div class="stat-v" id="h-total" style="color:white">0</div></div>
   <div class="stat"><div class="stat-l">WIN%</div><div class="stat-v" id="h-wr" style="color:var(--g)">—</div></div>
   <div class="stat"><div class="stat-l">TOPLAM P&L</div><div class="stat-v" id="h-pnl" style="color:var(--g)">—</div></div>
+  <div class="stat"><div class="stat-l">KAR/ZARAR $</div><div class="stat-v" id="h-pnl-usd" style="color:var(--g)">—</div></div>
   <div class="stat"><div class="stat-l" style="color:var(--g)">AÇIK</div><div class="stat-v" id="h-open" style="color:var(--g)">0</div></div>
   <div class="stat"><div class="stat-l">CANLI P&L</div><div class="stat-v" id="h-live" style="color:var(--c)">—</div></div>
   <div class="stat"><div class="stat-l">ORTALANDI</div><div class="stat-v" id="h-avg" style="color:var(--a)">0</div></div>
@@ -1179,6 +1181,7 @@ function renderHeadline(){
   upd('h-total',signals.length);
   upd('h-wr',wr!==null?wr.toFixed(0)+'%':'—');setC('h-wr',wr!==null?(wr>=50?'var(--g)':'var(--r)'):'var(--g)');
   upd('h-pnl',closed.length?(tp>=0?'+':'')+tp.toFixed(2)+'%':'—');setC('h-pnl',tp>=0?'var(--g)':'var(--r)');
+  var usd=pnlToUSD(tp);upd('h-pnl-usd',closed.length?fUSD(usd):'—');setC('h-pnl-usd',usd>=0?'var(--g)':'var(--r)');
   upd('h-open',open.length);
   upd('h-avg', avg.length);
   var impTotal=signals.filter(function(s){return s.imported;}).length;
@@ -1241,7 +1244,7 @@ function getRowData(s){
   var tc=s.type==='ULTRA'?'var(--ultra)':s.type==='ELITE'?'var(--elite)':'var(--clean)';
   var lp=livePrices[s.sym];
   var pnl=s.status!=='open'?s.pnl:calcLivePnl(s);
-  var pnlTx=pnl!==null?(pnl>=0?'+':'')+pnl.toFixed(2)+'%':'—';
+  var pnlTx=pnl!==null?(pnl>=0?'+':'')+pnl.toFixed(2)+'% '+fUSD(pnlToUSD(pnl)):'—';
   var pnlC=pnl!==null?(pnl>=0?'var(--g)':'var(--r)'):'var(--txd)';
   var lpTx=s.status!=='open'?'$'+fP(s.exit||s.entry):(lp?'$'+fP(lp):(s.entry?'$'+fP(s.entry):'—'));
   var entryShow=s.averaged?'$'+fP(s.avgEntry)+'*':'$'+fP(s.entry);
@@ -1954,6 +1957,44 @@ function toggleTPFeature(){
 
 applyTPToggle();
 
+// ═══ SERMAYE / KALDIRAC ═══
+var CAPITAL  = parseFloat(localStorage.getItem('up1_capital'))||100;
+var LEVERAGE = parseFloat(localStorage.getItem('up1_leverage'))||1;
+
+function openCapSettings(){
+  document.getElementById('cap-capital').value  = CAPITAL;
+  document.getElementById('cap-leverage').value = LEVERAGE;
+  updateCapPreview();
+  document.getElementById('capModal').style.display='flex';
+}
+function closeCapSettings(){
+  document.getElementById('capModal').style.display='none';
+}
+function updateCapPreview(){
+  var c=parseFloat(document.getElementById('cap-capital').value)||100;
+  var l=parseFloat(document.getElementById('cap-leverage').value)||1;
+  document.getElementById('cap-preview').textContent=
+    'Pozisyon: $'+c+' × '+l+'x = $'+(c*l).toLocaleString('en',{maximumFractionDigits:0});
+}
+document.getElementById('cap-capital').addEventListener('input',updateCapPreview);
+document.getElementById('cap-leverage').addEventListener('input',updateCapPreview);
+
+function saveCapSettings(){
+  CAPITAL  = parseFloat(document.getElementById('cap-capital').value)||100;
+  LEVERAGE = parseFloat(document.getElementById('cap-leverage').value)||1;
+  localStorage.setItem('up1_capital',CAPITAL);
+  localStorage.setItem('up1_leverage',LEVERAGE);
+  closeCapSettings();
+  render();
+}
+function pnlToUSD(pnlPct){
+  return (CAPITAL*LEVERAGE*pnlPct/100);
+}
+function fUSD(n){
+  if(n===null||n===undefined||isNaN(n)) return '—';
+  return (n>=0?'+':'-')+'$'+Math.abs(n).toFixed(2);
+}
+
 // ════════════════════════════════════════════════════════
 // 🎯 DİNAMİK TP / ORT ANALİZ MOTORu
 // Binance Spot API'den ATR + geçmiş sinyallerden hibrit hesap
@@ -1977,7 +2018,10 @@ function renderTPAnalysis(){
 
   // Unique semboller için ATR çek
   var symSet={};
-  allSigs.forEach(function(s){ if(s.sym) symSet[s.sym]=true; });
+  allSigs.forEach(function(s){
+    var sym = s.sym || (s.coin ? s.coin+'USDT' : null) || (s.symbol ? s.symbol.replace('.P','').toUpperCase() : null);
+    if(sym) { s._sym = sym; symSet[sym]=true; }
+  });
   var syms=Object.keys(symSet);
   if(!syms.length){ loading.textContent='Sembol bulunamadı.'; return; }
 
@@ -1993,12 +2037,12 @@ function renderTPAnalysis(){
         // Koin bazında geçmiş P&L hesapla
         var histMap={};
         allSigs.forEach(function(s){
-          if(!s.sym) return;
-          if(!histMap[s.sym]) histMap[s.sym]={pnls:[],wins:0,total:0};
-          histMap[s.sym].total++;
+          var sSym=s._sym||s.sym; if(!sSym) return;
+          if(!histMap[sSym]) histMap[sSym]={pnls:[],wins:0,total:0};
+          histMap[sSym].total++;
           if(s.pnl && parseFloat(s.pnl)>0){
-            histMap[s.sym].wins++;
-            histMap[s.sym].pnls.push(parseFloat(s.pnl));
+            histMap[sSym].wins++;
+            histMap[sSym].pnls.push(parseFloat(s.pnl));
           }
         });
 
@@ -2014,46 +2058,57 @@ function calcDynParams(sym, entry, dir, atrMap, histMap){
   var hist = histMap[sym]||{pnls:[],wins:0,total:0};
   var ep = parseFloat(entry)||1;
 
+  // ATR % hesabı
   var atrPct14 = (atr.atr14/ep*100);
   var atrPct7  = (atr.atr7/ep*100);
   var volScore = atrPct14*0.6 + atrPct7*0.4;
 
-  // Geçmiş P&L ağırlığı
-  var histPnl = hist.pnls.length>0
-    ? hist.pnls.reduce(function(a,b){return a+b;},0)/hist.pnls.length : null;
-
-  var atrTP = Math.min(Math.max(volScore*1.3, 1.2), 9);
-  var finalTP = histPnl && histPnl>0.5
-    ? atrTP*0.6 + histPnl*0.4 : atrTP;
-  finalTP = Math.round(Math.min(Math.max(finalTP,1.2),10)*10)/10;
-
-  var ort1Pct = Math.round(Math.min(Math.max(volScore*2.0, 4), 16)*10)/10;
-  var ort2Pct = Math.round(Math.min(Math.max(volScore*3.2, 6), 22)*10)/10;
-
-  // Gerçek fiyat hedefleri
-  var tpPrice, ort1Price, ort2Price, ort2avgEntry, ort2tpPrice;
-  if(dir==='BUY'){
-    tpPrice     = ep*(1+finalTP/100);
-    ort1Price   = ep*(1-ort1Pct/100);
-    var avg1    = (ep+ort1Price)/2;
-    tpPrice     = avg1*(1+finalTP/100); // TP ortalamadan
-    ort2Price   = avg1*(1-ort2Pct/100);
-    var avg2    = (avg1*2+ort2Price)/3;
-    ort2tpPrice = avg2*(1+finalTP/100);
+  // ── Volatilite tierleri — baz %3 TP, %10 ORT ──
+  // Tier sınırları: 1h ATR % cinsinden
+  var finalTP, ort1Pct, ort2Pct, tierLabel;
+  if(volScore < 1.0){
+    // Çok düşük vol — TP yakın, ORT yakın
+    finalTP=2.0; ort1Pct=7.0; ort2Pct=10.0; tierLabel='😴 DÜŞÜK';
+  } else if(volScore < 2.0){
+    // Normal — mevcut sisteme yakın
+    finalTP=3.0; ort1Pct=10.0; ort2Pct=10.0; tierLabel='✅ NORMAL';
+  } else if(volScore < 3.5){
+    // Yüksek vol
+    finalTP=4.5; ort1Pct=12.0; ort2Pct=15.0; tierLabel='⚡ YÜKSEK';
   } else {
-    tpPrice     = ep*(1-finalTP/100);
-    ort1Price   = ep*(1+ort1Pct/100);
-    var avg1    = (ep+ort1Price)/2;
-    tpPrice     = avg1*(1-finalTP/100);
-    ort2Price   = avg1*(1+ort2Pct/100);
-    var avg2    = (avg1*2+ort2Price)/3;
-    ort2tpPrice = avg2*(1-finalTP/100);
+    // Ekstrem vol
+    finalTP=6.0; ort1Pct=15.0; ort2Pct=20.0; tierLabel='🔥 EKSTREM';
+  }
+
+  // Geçmişi varsa TP'yi %20 oranında kişiselleştir
+  var histPnl = hist.pnls.length>=3
+    ? hist.pnls.reduce(function(a,b){return a+b;},0)/hist.pnls.length : null;
+  if(histPnl && histPnl>0.5){
+    finalTP = Math.round((finalTP*0.8 + histPnl*0.2)*10)/10;
+  }
+  finalTP = Math.min(Math.max(finalTP, 1.5), 10);
+
+  // Gerçek fiyat hedefleri — giriş fiyatından
+  var tpPrice, ort1Price, ort2Price, avg1, avg2;
+  if(dir==='BUY'){
+    tpPrice   = ep*(1+finalTP/100);
+    ort1Price = ep*(1-ort1Pct/100);
+    avg1      = (ep+ort1Price)/2;
+    ort2Price = ort1Price*(1-ort2Pct/100);
+    avg2      = (avg1*2+ort2Price)/3;
+  } else {
+    tpPrice   = ep*(1-finalTP/100);
+    ort1Price = ep*(1+ort1Pct/100);
+    avg1      = (ep+ort1Price)/2;
+    ort2Price = ort1Price*(1+ort2Pct/100);
+    avg2      = (avg1*2+ort2Price)/3;
   }
 
   return {
     tpPct:finalTP, ort1Pct:ort1Pct, ort2Pct:ort2Pct,
     tpPrice:tpPrice, ort1Price:ort1Price, ort2Price:ort2Price,
-    avg1:avg1, avg2:avg2, ort2tpPrice:ort2tpPrice,
+    avg1:avg1, avg2:avg2,
+    volScore:volScore, atrPct:volScore.toFixed(2), tierLabel:tierLabel
     volScore:volScore, atrPct:volScore.toFixed(2)
   };
 }
@@ -2061,7 +2116,8 @@ function calcDynParams(sym, entry, dir, atrMap, histMap){
 function runDynSimulations(allSigs, atrMap, histMap, container, loading){
   // Önce kapalı sinyaller için geçmiş veri simüle et, sonra render
   var sigsNeedSim = allSigs.filter(function(s){
-    return s.entry && s.ts && s.sym && !dynSimCache[s.tgId||s.id];
+    var sym = s._sym||s.sym;
+    return s.entry && s.ts && sym && !dynSimCache[s.tgId||s.id];
   });
 
   if(!sigsNeedSim.length){
@@ -2075,10 +2131,10 @@ function runDynSimulations(allSigs, atrMap, histMap, container, loading){
 
   sigsNeedSim.forEach(function(sig){
     var key = sig.tgId||sig.id;
-    var params = calcDynParams(sig.sym, sig.entry, sig.dir, atrMap, histMap);
+    var sigSym = sig._sym||sig.sym;
+    var params = calcDynParams(sigSym, sig.entry, sig.dir, atrMap, histMap);
 
     if(sig.status==='open'){
-      // Açık sinyal — simülasyon yok, sadece params sakla
       dynSimCache[key]={status:'open', params:params};
       done++;
       if(done===sigsNeedSim.length){
@@ -2088,8 +2144,7 @@ function runDynSimulations(allSigs, atrMap, histMap, container, loading){
       return;
     }
 
-    // Kapalı sinyal — Binance'den o anki mumları çek, simüle et
-    var sym = sig.sym;
+    var sym = sigSym;
     var startTs = sig.ts;
     var url='https://api.binance.com/api/v3/klines?symbol='+sym
       +'&interval=5m&startTime='+startTs+'&limit=1000';
@@ -2205,12 +2260,13 @@ function renderDynCards(allSigs, atrMap, histMap, container){
 
   // ── Her sinyal — mevcut renderCard stiliyle ──
   allSigs.forEach(function(sig){
-    if(!sig.sym||!sig.entry) return;
+    var sigSym=sig._sym||sig.sym; if(!sigSym||!sig.entry) return;
     var key=sig.tgId||sig.id;
     var cached=dynSimCache[key];
-    var params=cached?cached.params:calcDynParams(sig.sym,sig.entry,sig.dir,atrMap,histMap);
+    var params=cached?cached.params:calcDynParams(sigSym,sig.entry,sig.dir,atrMap,histMap);
     var result=cached?cached.result:null;
     var isOpen=sig.status==='open';
+    var coinName = sig.coin || sigSym.replace('USDT','');
 
     var tc=sig.type==='ULTRA'?'var(--ultra)':sig.type==='ELITE'?'var(--elite)':'var(--clean)';
 
@@ -2246,7 +2302,7 @@ function renderDynCards(allSigs, atrMap, histMap, container){
       '<div class="sig-card-top">'
       +'  <span class="badge b-'+sig.type.toLowerCase()+'">'+sig.type+'</span>'
       +'  <span class="badge '+(sig.dir==='BUY'?'b-buy':'b-sell')+'">'+sig.dir+'</span>'
-      +'  <span class="coin" style="margin-left:4px">'+sig.coin+'</span>'
+      +'  <span class="coin" style="margin-left:4px">'+coinName+'</span>'
       +'  <span class="pnl-big" style="color:'+pnlC+'">'+(icon?icon+' ':'')+pnlTx+'</span>'
       +'</div>'
 
@@ -2263,11 +2319,11 @@ function renderDynCards(allSigs, atrMap, histMap, container){
       +'  <div class="sig-card-cell"><div class="cell-l">ORT#2</div><div class="cell-v" style="color:var(--r)">$'+fP(params.ort2Price)+'<span style="font-size:9px;color:var(--txd);font-family:Inter"> %'+params.ort2Pct+'</span></div></div>'
       +'</div>'
 
-      // BOT — tarih + ATR
+      // BOT — tarih + tier + ATR
       +'<div class="sig-card-bot" style="justify-content:space-between;">'
       +'  <span style="font-size:9px;color:var(--txd)">'+dateStr(sig.ts)+'</span>'
+      +'  <span style="font-size:8px;color:var(--txb);font-weight:700;">'+params.tierLabel+'</span>'
       +'  <span style="font-size:8px;color:var(--txd)">ATR <b style="color:var(--txb)">%'+params.atrPct+'</b></span>'
-      +'  <span style="font-size:8px;color:var(--txd)">Skor <b style="color:var(--txb)">'+(sig.score||'—')+'</b></span>'
       +'</div>';
 
     container.appendChild(card);
@@ -2355,5 +2411,27 @@ function formatPrice(p){
     <div class="cm-trades" id="cmTrades"></div>
   </div>
 </div>
+<!-- ═══ SERMAYE AYAR MODAL ═══ -->
+<div id="capModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:3000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:100%;max-width:360px;padding:20px;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--g);margin-bottom:16px;">⚙️ SERMAYE AYARI</div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:9px;letter-spacing:1px;color:var(--txd);margin-bottom:6px;">SERMAYE (USD)</div>
+      <input id="cap-capital" type="number" value="100" min="1" step="1"
+        style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--tx);padding:10px;font-family:'JetBrains Mono',monospace;font-size:14px;outline:none;border-radius:6px;">
+    </div>
+    <div style="margin-bottom:20px;">
+      <div style="font-size:9px;letter-spacing:1px;color:var(--txd);margin-bottom:6px;">KALDIRAC (X)</div>
+      <input id="cap-leverage" type="number" value="1" min="1" max="125" step="1"
+        style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--tx);padding:10px;font-family:'JetBrains Mono',monospace;font-size:14px;outline:none;border-radius:6px;">
+    </div>
+    <div style="font-size:9px;color:var(--txd);margin-bottom:16px;" id="cap-preview">Pozisyon: $100 × 1x = $100</div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="saveCapSettings()" style="flex:1;padding:12px;background:linear-gradient(135deg,var(--g),var(--g2));color:#000;border:none;cursor:pointer;font-weight:700;font-size:13px;border-radius:6px;">✓ KAYDET</button>
+      <button onclick="closeCapSettings()" style="padding:12px 16px;background:transparent;border:1px solid var(--border);color:var(--txd);cursor:pointer;font-size:13px;border-radius:6px;">✕</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
