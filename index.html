@@ -378,13 +378,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-si
   <div id="tpContent" style="display:flex;flex-direction:column;gap:6px;"></div>
 </div>
 
-<div id="sbar">
-  <span>⚡ UltraPro</span>
-  <span style="display:flex;align-items:center;gap:8px;">
-    <span id="sbar-r">—</span>
-    <span onclick="toggleTPFeature()" id="tp-toggle-btn" style="cursor:pointer;font-size:9px;padding:2px 7px;border-radius:8px;border:1px solid var(--border);color:var(--txd);">🎯 TP Kapalı</span>
-  </span>
-</div>
+<div id="sbar"><span>⚡ UltraPro</span><span id="sbar-r">—</span></div>
 
 <!-- BOTTOM NAV -->
 <div id="bottomNav" style="display:flex;">
@@ -393,7 +387,8 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-si
   <button class="nav-btn" id="nb-buy" onclick="setFilter('buy',this);showView('list')"><span>🟢</span>BUY</button>
   <button class="nav-btn" id="nb-sell" onclick="setFilter('sell',this);showView('list')"><span>🔴</span>SELL</button>
   <button class="nav-btn" id="nb-chart" onclick="showView('chart')"><span>📈</span>GRAFİK</button>
-  <button class="nav-btn" id="nb-tp" onclick="showView('tp')" style="display:none;"><span>🎯</span>TP ANALİZ</button>
+  <button class="nav-btn" id="nb-tp-toggle" onclick="toggleTPFeature()"><span>🎯</span><span id="tp-toggle-lbl">TP</span></button>
+  <button class="nav-btn" id="nb-tp" onclick="showView('tp')" style="display:none;"><span>📊</span>ANALİZ</button>
   <button class="nav-btn" id="nb-clear" onclick="doClear()"><span>🗑</span>TEMİZLE</button>
 </div>
 
@@ -1935,15 +1930,17 @@ if(currentMode && (BOT_TOKEN || GUEST_MODE)){
 var TP_ENABLED = localStorage.getItem('up1_tp_enabled')==='1';
 
 function applyTPToggle(){
-  var btn  = document.getElementById('nb-tp');
-  var tbtn = document.getElementById('tp-toggle-btn');
+  var btn    = document.getElementById('nb-tp');
+  var toggle = document.getElementById('nb-tp-toggle');
+  var lbl    = document.getElementById('tp-toggle-lbl');
   if(TP_ENABLED){
-    if(btn)  btn.style.display='';
-    if(tbtn){ tbtn.textContent='🎯 TP Açık'; tbtn.style.borderColor='var(--g)'; tbtn.style.color='var(--g)'; }
+    if(btn)    btn.style.display='';
+    if(toggle) toggle.style.color='var(--g)';
+    if(lbl)    lbl.textContent='TP AÇ';
   } else {
-    if(btn)  btn.style.display='none';
-    if(tbtn){ tbtn.textContent='🎯 TP Kapalı'; tbtn.style.borderColor='var(--border)'; tbtn.style.color='var(--txd)'; }
-    // Eğer şu an TP sayfasındaysak ana sayfaya dön
+    if(btn)    btn.style.display='none';
+    if(toggle) toggle.style.color='var(--txd)';
+    if(lbl)    lbl.textContent='TP';
     var tpEl=document.getElementById('tpSection');
     if(tpEl && tpEl.style.display!=='none') showView('list');
   }
