@@ -2438,49 +2438,6 @@ function formatPrice(p){
   return p.toFixed(7);
 }
 
-  var content = document.getElementById('tpContent');
-  var loading = document.getElementById('tpLoading');
-  content.innerHTML='';
-  loading.style.display='block';
-  loading.textContent='Hesaplanıyor...';
-
-  if(!signals||signals.length===0){
-    loading.textContent='Henüz sinyal yok.';
-    return;
-  }
-
-  // Tüm sinyaller — en yeni önce
-  var allSigs = signals.slice().sort(function(a,b){
-    return (b.id||0)-(a.id||0);
-  });
-
-  // Her sinyal için sembol ATR'ını çek
-  // Önce unique sembolleri topla
-  var symSet={};
-  allSigs.forEach(function(s){
-    if(s.symbol){ var sym=s.symbol.replace('.P','').toUpperCase(); symSet[sym]=true; }
-  });
-  var syms=Object.keys(symSet);
-
-  if(syms.length===0){loading.textContent='Sembol bilgisi bulunamadı.';return;}
-
-  loading.textContent='Binance\'den '+syms.length+' koin ATR\'ı çekiliyor...';
-
-  var atrMap={};
-  var done=0;
-
-  syms.forEach(function(sym){
-    fetchATR(sym, function(atr14, atr7, curPrice){
-      atrMap[sym]={atr14:atr14, atr7:atr7, curPrice:curPrice};
-      done++;
-      if(done===syms.length){
-        loading.style.display='none';
-        buildTPCards(allSigs, atrMap, content);
-      }
-    });
-  });
-}
-
 </script>
 
 <!-- ═══ GEÇMİŞ İÇE AKTAR MODAL ═══ -->
