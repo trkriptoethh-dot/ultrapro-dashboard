@@ -23,6 +23,18 @@ body.theme-gold{
   --border:#2e2500;--tx:#ffe8a0;--txd:#4a3800;--txb:#8a6a00;
   --card:var(--bg2);--top:var(--bg2);
 }
+body.theme-white{
+  --bg:#e8eaee;--bg2:#f0f2f5;--bg3:#dde0e6;--bg4:#d4d8de;
+  --g:#00995c;--g2:#007a48;--r:#cc2040;--a:#bb6600;--c:#0066bb;
+  --ultra:#cc2040;--elite:#0066bb;--clean:#00995c;
+  --border:#c8cdd6;--tx:#1e2030;--txd:#8890a0;--txb:#4a5268;
+  --card:var(--bg2);--top:var(--bg2);
+}
+body.theme-white .logo-t{ color:#1a1a2e; }
+body.theme-white .coin{ color:#1a1a2e; }
+body.theme-white .pnl-big{ text-shadow: none; }
+body.theme-white #stats{ background: var(--border); }
+body.theme-white .sig-card{ box-shadow: 0 1px 4px rgba(0,0,0,.08); }
 
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;transition:background .3s,color .3s;}
@@ -240,6 +252,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-si
     <div class="theme-row" style="justify-content:center;margin-bottom:24px;">
       <button class="theme-btn on" onclick="setTheme('dark',this)">🌑 Dark</button>
       <button class="theme-btn" onclick="setTheme('gold',this)">🏆 Gold</button>
+      <button class="theme-btn" onclick="setTheme('white',this)">☀️ White</button>
     </div>
 
     <!-- SAHİP GİRİŞİ -->
@@ -321,8 +334,8 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-si
   <div class="stat"><div class="stat-l">WIN $</div><div class="stat-v" id="h-win-usd" style="color:var(--g)">—</div><div style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txd);margin-top:2px;" id="h-win-try"></div></div>
   <div class="stat"><div class="stat-l">REALIZE $</div><div class="stat-v" id="h-pnl-usd" style="color:var(--g)">—</div><div style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txd);margin-top:2px;" id="h-pnl-try"></div></div>
   <div class="stat"><div class="stat-l">AÇIK $</div><div class="stat-v" id="h-live-usd" style="color:var(--c)">—</div><div style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txd);margin-top:2px;" id="h-live-try"></div></div>
-  <div class="stat" style="background:var(--bg);border-color:transparent;"></div>
-  <div class="stat" style="background:var(--bg);border-color:transparent;"></div>
+  <div style="background:var(--bg2);"></div>
+  <div style="background:var(--bg2);"></div>
 </div>
 <!-- hidden ids for capital -->
 <span id="h-capital" style="display:none"></span>
