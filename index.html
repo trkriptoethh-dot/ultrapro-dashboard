@@ -763,6 +763,9 @@ function catchUpPoll(){
         if(deletedIds.indexOf(item.update_id)>=0) return;
         var p=parseMsg(text);
         if(!p) return;
+        // Aynı dakika + aynı coin + aynı yön kontrolü
+        var msgMin = Math.floor((msg.date?msg.date*1000:Date.now())/60000);
+        if(signals.find(function(s){return s.sym===p.sym && s.dir===p.dir && Math.floor(s.ts/60000)===msgMin;})) return;
         var sig={id:Date.now()+Math.random(),tgId:item.update_id,sym:p.sym,coin:p.coin,dir:p.dir,type:p.type,score:p.score,entry:p.price,avgEntry:p.price,exit:null,manualExit:null,pnl:null,status:'open',ts:msg.date?msg.date*1000:Date.now(),isNew:false,averaged:false,rawMsg:text};
         if(sig.entry) sig.targetPrice = sig.dir==='BUY' ? sig.entry*1.03 : sig.entry*0.97;
         if(!sig.entry) fetchPrice(sig);
@@ -860,6 +863,9 @@ function poll(){
 
         var p=parseMsg(text);
         if(!p) return;
+        // Aynı dakika + aynı coin + aynı yön kontrolü
+        var msgMin2 = Math.floor((msg.date?msg.date*1000:Date.now())/60000);
+        if(signals.find(function(s){return s.sym===p.sym && s.dir===p.dir && Math.floor(s.ts/60000)===msgMin2;})) return;
         var sig={id:Date.now()+Math.random(),tgId:item.update_id,sym:p.sym,coin:p.coin,dir:p.dir,type:p.type,score:p.score,entry:p.price,avgEntry:p.price,exit:null,manualExit:null,pnl:null,status:'open',ts:msg.date?msg.date*1000:Date.now(),isNew:true,averaged:false,rawMsg:text};
         if(sig.entry) sig.targetPrice = sig.dir==='BUY' ? sig.entry*1.03 : sig.entry*0.97;
         if(!sig.entry) fetchPrice(sig);
@@ -1500,20 +1506,33 @@ function renderHeadline(){
   else{upd('h-live','—');setC('h-live','var(--c)');}
   upd('sbar-r',signals.length+' sinyal | '+open.length+' açık | '+wins.length+' kazanç | '+avg.length+' ortalandı');
 
-  // Sermaye bazlı hesaplamalar — pozisyon × kaldıraç
-  var POS = userCapital * userLeverage;
+  // Sermaye bazlı hesaplamalar — ORT sayısına göre pozisyon büyür
   var realizedUsd = 0;
-  closed.forEach(function(s){ realizedUsd += (s.pnl||0) / 100 * POS; });
+  closed.forEach(function(s){
+    var ortMult = 1 + (s.avgCount||0); // giriş + kaç ORT yapıldı
+    var POS = userCapital * userLeverage * ortMult;
+    realizedUsd += (s.pnl||0) / 100 * POS;
+  });
   var liveUsd = 0;
   open.forEach(function(s){
     var p = calcLivePnl(s);
+    var ortMult = 1 + (s.avgCount||0);
+    var POS = userCapital * userLeverage * ortMult;
     if(p!==null) liveUsd += p / 100 * POS;
   });
   var winUsd = 0;
-  wins.forEach(function(s){ winUsd += (s.pnl||0) / 100 * POS; });
+  wins.forEach(function(s){
+    var ortMult = 1 + (s.avgCount||0);
+    var POS = userCapital * userLeverage * ortMult;
+    winUsd += (s.pnl||0) / 100 * POS;
+  });
   var lossSigs = closed.filter(function(s){ return s.status==='loss'; });
   var lossUsd = 0;
-  lossSigs.forEach(function(s){ lossUsd += (s.pnl||0) / 100 * POS; });
+  lossSigs.forEach(function(s){
+    var ortMult = 1 + (s.avgCount||0);
+    var POS = userCapital * userLeverage * ortMult;
+    lossUsd += (s.pnl||0) / 100 * POS;
+  });
 
   upd('h-pnl-usd', (realizedUsd>=0?'+':'') + '$'+Math.abs(realizedUsd).toFixed(2));
   setC('h-pnl-usd', realizedUsd>=0?'var(--g)':'var(--r)');
@@ -1590,8 +1609,9 @@ function getRowData(s){
   var icon=s.status!=='open'?(s.pnl>=0?'<span style="filter:drop-shadow(0 0 3px #00ff88);font-size:15px;">✅</span>':'<span style="filter:drop-shadow(0 0 3px #ff3355);font-size:15px;">❌</span>'):(s.autoClose?'🤖':s.averaged?'📊':pnl>=3?'🎯':pnl<=-10?'⚠️':'');
   var manVal=s.manualExit?s.manualExit:(s.status!=='open'&&s.exit?s.exit:'');
   var manClass=s.manualExit?'man-inp filled':'man-inp';
-  // Dolar kar/zarar — pozisyon × kaldıraç
-  var POS=userCapital*userLeverage;
+  // Dolar kar/zarar — ORT sayısına göre pozisyon büyür
+  var ortMult = 1 + (s.avgCount||0);
+  var POS = userCapital * userLeverage * ortMult;
   var pnlUsd=pnl!==null?(pnl/100*POS):null;
   var pnlUsdTx=pnlUsd!==null?(' <span style="font-size:9px;color:'+(pnlUsd>=0?'var(--g)':'var(--r)')+'">('+(pnlUsd>=0?'+':'')+pnlUsd.toFixed(2)+'$)</span>'):'';
   return {tc:tc,lp:lp,pnl:pnl,pnlTx:pnlTx,pnlC:pnlC,lpTx:lpTx,entryShow:entryShow,icon:icon,manVal:manVal,manClass:manClass,pnlUsdTx:pnlUsdTx};
@@ -1624,16 +1644,29 @@ function renderCard(s){
   var avgDetail = '';
   if(s.averaged && s.avgEvents && s.avgEvents.length){
     avgDetail += '<div style="padding:6px 12px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:9px;color:var(--a);line-height:1.8;">';
-    avgDetail += '📥 Giriş: $'+fP(s.entry)+' → 🎯 '+fP(s.dir==='BUY'?s.entry*1.03:s.entry*0.97)+'<br>';
+    // Giriş satırı — 1x sermaye
+    var tp0 = s.dir==='BUY' ? s.entry*1.03 : s.entry*0.97;
+    var tp0Pct = s.dir==='BUY' ? 3 : 3;
+    var tp0Usd = (userCapital * userLeverage * 1 * tp0Pct / 100);
+    avgDetail += '📥 Giriş: $'+fP(s.entry)+' → 🎯 '+fP(tp0)
+      +' <span style="color:var(--g);font-size:8px">(+$'+tp0Usd.toFixed(2)+')</span><br>';
     s.avgEvents.forEach(function(ev){
       var secEnt = ev.secondEntry || ev.newAvgEntry;
-      avgDetail += '📊 Ort#'+ev.count+': $'+fP(secEnt)+' → 🎯 '+fP(ev.newTarget)+(ev.secondEntry ? ' <span style="color:var(--txd);font-size:8px">(ort: $'+fP(ev.newAvgEntry)+')</span>' : '')+'<br>';
+      var mult = 1 + ev.count; // giriş + ORT sayısı
+      var tpPct = ev.newTarget && ev.newAvgEntry
+        ? Math.abs(ev.newTarget - ev.newAvgEntry) / ev.newAvgEntry * 100 : 3;
+      var tpUsd = userCapital * userLeverage * mult * tpPct / 100;
+      avgDetail += '📊 Ort#'+ev.count+': $'+fP(secEnt)+' → 🎯 '+fP(ev.newTarget)
+        +' <span style="color:var(--g);font-size:8px">(+$'+tpUsd.toFixed(2)+')</span>'
+        +(ev.secondEntry ? ' <span style="color:var(--txd);font-size:8px">(ort: $'+fP(ev.newAvgEntry)+')</span>' : '')+'<br>';
     });
     avgDetail += '</div>';
   } else if(s.status==='open' && s.entry && s.targetPrice) {
-    // Ortalama yok — sadece giriş → TP göster
+    var tp1Pct = Math.abs(s.targetPrice - s.entry) / s.entry * 100;
+    var tp1Usd = userCapital * userLeverage * 1 * tp1Pct / 100;
     avgDetail += '<div style="padding:5px 12px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:9px;color:var(--a);line-height:1.8;">';
-    avgDetail += '📥 Giriş: $'+fP(s.entry)+' → 🎯 '+fP(s.targetPrice);
+    avgDetail += '📥 Giriş: $'+fP(s.entry)+' → 🎯 '+fP(s.targetPrice)
+      +' <span style="color:var(--g);font-size:8px">(+$'+tp1Usd.toFixed(2)+')</span>';
     avgDetail += '</div>';
   }
   return '<div class="sig-card'+avgCl+newCl+'" style="border-top:3px solid '+d.tc+'">'
