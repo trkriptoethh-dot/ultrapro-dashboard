@@ -23,18 +23,6 @@ body.theme-gold{
   --border:#2e2500;--tx:#ffe8a0;--txd:#4a3800;--txb:#8a6a00;
   --card:var(--bg2);--top:var(--bg2);
 }
-body.theme-white{
-  --bg:#e8eaee;--bg2:#f0f2f5;--bg3:#dde0e6;--bg4:#d4d8de;
-  --g:#00995c;--g2:#007a48;--r:#cc2040;--a:#bb6600;--c:#0066bb;
-  --ultra:#cc2040;--elite:#0066bb;--clean:#00995c;
-  --border:#c8cdd6;--tx:#1e2030;--txd:#8890a0;--txb:#4a5268;
-  --card:var(--bg2);--top:var(--bg2);
-}
-body.theme-white .logo-t{ color:#1a1a2e; }
-body.theme-white .coin{ color:#1a1a2e; }
-body.theme-white .pnl-big{ text-shadow: none; }
-body.theme-white #stats{ background: var(--border); }
-body.theme-white .sig-card{ box-shadow: 0 1px 4px rgba(0,0,0,.08); }
 
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;transition:background .3s,color .3s;}
@@ -252,7 +240,6 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-si
     <div class="theme-row" style="justify-content:center;margin-bottom:24px;">
       <button class="theme-btn on" onclick="setTheme('dark',this)">🌑 Dark</button>
       <button class="theme-btn" onclick="setTheme('gold',this)">🏆 Gold</button>
-      <button class="theme-btn" onclick="setTheme('white',this)">☀️ White</button>
     </div>
 
     <!-- SAHİP GİRİŞİ -->
@@ -318,6 +305,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-si
     <span id="connBadge" style="font-size:10px;color:var(--txd);">⏳</span>
     <button class="icon-btn" id="guestLinkBtn" onclick="shareGuestLink()" style="display:none;" title="Misafir Linki">🔗</button>
     <span id="capitalBtn" onclick="promptCapital()" style="cursor:pointer;font-size:10px;color:var(--a);border:1px solid rgba(255,170,0,.3);border-radius:10px;padding:3px 8px;font-family:JetBrains Mono,monospace;" title="Pozisyon / Kaldıraç">💰 <span id="capitalBtnVal">$100 x1</span></span>
+    <button class="icon-btn" id="aiAnalystBtn" onclick="runAIAnalyst()" title="AI Analiz" style="color:var(--c);border-color:rgba(0,212,255,.3);">🤖</button>
     <button class="icon-btn" id="backBtn" onclick="goBack()">☰</button>
   </div>
 </div>
@@ -327,15 +315,14 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-si
   <div class="stat"><div class="stat-l">WIN%</div><div class="stat-v" id="h-wr" style="color:var(--g)">—</div></div>
   <div class="stat"><div class="stat-l">TOPLAM P&L</div><div class="stat-v" id="h-pnl" style="color:var(--g)">—</div></div>
   <div class="stat"><div class="stat-l" style="color:var(--g)">AÇIK</div><div class="stat-v" id="h-open" style="color:var(--g)">0</div></div>
-  <div class="stat"><div class="stat-l">AÇIK P&L</div><div class="stat-v" id="h-live" style="color:var(--c)">—</div></div>
+  <div class="stat"><div class="stat-l">CANLI P&L</div><div class="stat-v" id="h-live" style="color:var(--c)">—</div></div>
   <div class="stat"><div class="stat-l">ORTALANDI</div><div class="stat-v" id="h-avg" style="color:var(--a)">0</div></div>
   <div class="stat"><div class="stat-l">IMPORT</div><div class="stat-v" id="h-imp" style="color:var(--c)">0</div></div>
   <div class="stat"><div class="stat-l">IMP.ORT</div><div class="stat-v" id="h-imp-avg" style="color:var(--a)">0</div></div>
-  <div class="stat"><div class="stat-l">WIN $</div><div class="stat-v" id="h-win-usd" style="color:var(--g)">—</div><div style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txd);margin-top:2px;" id="h-win-try"></div></div>
-  <div class="stat"><div class="stat-l">REALIZE $</div><div class="stat-v" id="h-pnl-usd" style="color:var(--g)">—</div><div style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txd);margin-top:2px;" id="h-pnl-try"></div></div>
-  <div class="stat"><div class="stat-l">AÇIK $</div><div class="stat-v" id="h-live-usd" style="color:var(--c)">—</div><div style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txd);margin-top:2px;" id="h-live-try"></div></div>
-  <div style="background:var(--bg2);"></div>
-  <div style="background:var(--bg2);"></div>
+  <div class="stat"><div class="stat-l">REALIZE $</div><div class="stat-v" id="h-pnl-usd" style="color:var(--g)">—</div></div>
+  <div class="stat"><div class="stat-l">CANLI $</div><div class="stat-v" id="h-live-usd" style="color:var(--c)">—</div></div>
+  <div class="stat"><div class="stat-l">WIN $</div><div class="stat-v" id="h-win-usd" style="color:var(--g)">—</div></div>
+  <div class="stat"><div class="stat-l">LOSS $</div><div class="stat-v" id="h-loss-usd" style="color:var(--r)">—</div></div>
 </div>
 <!-- hidden ids for capital -->
 <span id="h-capital" style="display:none"></span>
@@ -508,27 +495,6 @@ function loadFromRailway(callback){
 })();
 var userCapital = parseFloat(localStorage.getItem('up1_capital') || '100');
 var userLeverage = parseFloat(localStorage.getItem('up1_leverage') || '1');
-
-// ── USDT/TRY anlık kur ──
-var usdtTryRate = 0;
-function fetchUsdtTry(){
-  fetch('https://api.binance.com/api/v3/ticker/price?symbol=USDTTRY')
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d && d.price){
-        usdtTryRate = parseFloat(d.price);
-        renderHeadline();
-      }
-    }).catch(function(){});
-}
-fetchUsdtTry();
-setInterval(fetchUsdtTry, 2000); // 2 saniyede bir güncelle
-
-function fTRY(usd){
-  if(!usd || !usdtTryRate) return '';
-  var tl = usd * usdtTryRate;
-  return '₺'+(tl>=0?'':'-')+Math.abs(tl).toLocaleString('tr-TR',{maximumFractionDigits:0});
-}
 function saveCapital(v){ userCapital=v; localStorage.setItem('up1_capital', v); renderHeadline(); updateCapitalBtn(); }
 function saveLeverage(v){ userLeverage=v; localStorage.setItem('up1_leverage', v); renderHeadline(); updateCapitalBtn(); }
 function updateCapitalBtn(){
@@ -1569,17 +1535,12 @@ function renderHeadline(){
     lossUsd += (s.pnl||0) / 100 * POS;
   });
 
-  var netUsd = realizedUsd + liveUsd;
-  upd('h-pnl-usd', (netUsd>=0?'+':'') + '$'+Math.abs(netUsd).toFixed(2));
-  setC('h-pnl-usd', netUsd>=0?'var(--g)':'var(--r)');
-  upd('h-pnl-try', usdtTryRate ? fTRY(netUsd) : '');
-
-  upd('h-win-usd', '+$'+winUsd.toFixed(2)); setC('h-win-usd','var(--g)');
-  upd('h-win-try', usdtTryRate ? fTRY(winUsd) : '');
-
-  upd('h-live-usd', (liveUsd>=0?'+':'')+'$'+Math.abs(liveUsd).toFixed(2));
+  upd('h-pnl-usd', (realizedUsd>=0?'+':'') + '$'+Math.abs(realizedUsd).toFixed(2));
+  setC('h-pnl-usd', realizedUsd>=0?'var(--g)':'var(--r)');
+  upd('h-live-usd', (liveUsd>=0?'+':'') + '$'+Math.abs(liveUsd).toFixed(2));
   setC('h-live-usd', liveUsd>=0?'var(--g)':'var(--r)');
-  upd('h-live-try', usdtTryRate ? fTRY(liveUsd) : '');
+  upd('h-win-usd', '+$'+winUsd.toFixed(2)); setC('h-win-usd','var(--g)');
+  upd('h-loss-usd', '$'+lossUsd.toFixed(2)); setC('h-loss-usd', lossUsd<=0?'var(--r)':'var(--g)');
 }
 
 function renderTypeCards(){
@@ -1918,6 +1879,39 @@ function drawChart(){
   [minV+pad2, (minV+maxV)/2, maxV-pad2].forEach(function(v){
     ctx.fillText((v>=0?'+':'')+v.toFixed(1)+'%', pad.l-4, yp(v)+3);
   });
+}
+
+// ═══ AI ANALİST ═══
+var AI_ANALYST_URL = 'https://ultrapro-ai-analyst-production.up.railway.app';
+
+function runAIAnalyst(){
+  var openSigs = signals.filter(function(s){ return s.status === 'open'; });
+  if(!openSigs.length){ alert('Açık işlem yok!'); return; }
+  var btn = document.getElementById('aiAnalystBtn');
+  btn.textContent = '⏳'; btn.disabled = true;
+  var positions = openSigs.map(function(s){
+    var pnl = calcLivePnl(s) || 0;
+    return { symbol: s.sym, entry: s.avgEntry || s.entry, direction: s.dir, pnlPct: pnl, capital: userCapital };
+  });
+  fetch(AI_ANALYST_URL + '/analyze-all', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ positions: positions })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    btn.textContent = '🤖'; btn.disabled = false;
+    showAIToast(d.success ? '✅ '+d.count+' işlem analiz edildi — Telegram\'a gönderildi!' : '❌ '+(d.error||'hata'), d.success?'var(--g)':'var(--r)');
+  })
+  .catch(function(){ btn.textContent = '🤖'; btn.disabled = false; showAIToast('❌ Bağlantı hatası','var(--r)'); });
+}
+
+function showAIToast(msg, color){
+  var ex=document.getElementById('aiToast'); if(ex) ex.remove();
+  var t=document.createElement('div'); t.id='aiToast';
+  t.style.cssText='position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 20px;z-index:99999;box-shadow:0 4px 24px rgba(0,0,0,.5);font-size:12px;color:'+color+';white-space:nowrap;';
+  t.textContent=msg; document.body.appendChild(t);
+  setTimeout(function(){ if(t.parentNode) t.remove(); },4000);
 }
 
 // Önceki mod varsa direkt aç
