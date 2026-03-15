@@ -1941,12 +1941,15 @@ function runAIAnalyst(){
 
   var positions = openSigs.map(function(s){
     var pnl = calcLivePnl(s) || 0;
+    var livePrice = livePrices[s.sym] || null;
     return {
-      symbol:    s.sym,
-      entry:     s.avgEntry || s.entry,
-      direction: s.dir,
-      pnlPct:    pnl,
-      capital:   userCapital
+      symbol:     s.sym,
+      entry:      s.avgEntry || s.entry,
+      direction:  s.dir,
+      pnlPct:     pnl,
+      capital:    userCapital,
+      livePrice:  livePrice,
+      change24h:  null
     };
   });
 
